@@ -261,6 +261,8 @@ in {
             chmod 600 '${runtimeDir}/config/config.json'
           fi
 
+          chown -R ${globals.anchorr.user}:${globals.anchorr.group} '${runtimeDir}'
+
           ${optionalString (cfg.tmdbApiKeyFile != null) ''
             printf "TMDB_API_KEY=" >> "$ENV_FILE"
             cat '${cfg.tmdbApiKeyFile}' >> "$ENV_FILE"
@@ -283,6 +285,7 @@ in {
           
           echo "JELLYSEERR_URL=${cfg.jellyseerr.url}" >> "$ENV_FILE"
           echo "WEBHOOK_PORT=${toString cfg.port}" >> "$ENV_FILE"
+          chown ${globals.anchorr.user}:${globals.anchorr.group} "$ENV_FILE"
         '';
       };
     };
@@ -299,17 +302,15 @@ in {
       ];
 
       preStart = ''
-        install -d -m 0750 -o ${globals.anchorr.user} -g ${globals.anchorr.group} '${runtimeDir}'
-        install -d -m 0750 -o ${globals.anchorr.user} -g ${globals.anchorr.group} '${runtimeDir}/config'
-        install -d -m 0750 -o ${globals.anchorr.user} -g ${globals.anchorr.group} '${runtimeDir}/logs'
+        install -d -m 0750 '${runtimeDir}'
+        install -d -m 0750 '${runtimeDir}/config'
+        install -d -m 0750 '${runtimeDir}/logs'
 
         rsync -a \
           --exclude=config \
           --exclude=logs \
           '${cfg.package}/lib/anchorr/' \
           '${runtimeDir}/'
-
-        chown -R ${globals.anchorr.user}:${globals.anchorr.group} '${runtimeDir}'
       '';
 
       serviceConfig = {
