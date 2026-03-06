@@ -307,8 +307,8 @@ in {
         install -d -m 0750 '${runtimeDir}/logs'
 
         rsync -a \
-          --exclude=config \
-          --exclude=logs \
+          --exclude=/config \
+          --exclude=/logs \
           '${cfg.package}/lib/anchorr/' \
           '${runtimeDir}/'
       '';
