@@ -230,11 +230,11 @@ in {
         Group = globals.anchorr.group;
         ExecStart = pkgs.writeShellScript "anchorr-setup" ''
           set -euo pipefail
-          mkdir -p '${cfg.stateDir}/app/config'
+          mkdir -p '${cfg.stateDir}/runtime/config'
           
           # Handle config.json
-          cp '${effectiveConfigFile}' '${cfg.stateDir}/app/config/config.json'
-          chmod 600 '${cfg.stateDir}/app/config/config.json'
+          cp '${effectiveConfigFile}' '${cfg.stateDir}/runtime/config/config.json'
+          chmod 600 '${cfg.stateDir}/runtime/config/config.json'
 
           # Generate environment file with secrets
           ENV_FILE='${cfg.stateDir}/env'
@@ -256,9 +256,9 @@ in {
               '.discord = ((.discord // {})
                 + (if $bot_id != "" then { bot_id: $bot_id } else {} end)
                 + (if $guild_id != "" then { guild_id: $guild_id } else {} end))' \
-              '${cfg.stateDir}/app/config/config.json' > "$tmp_file"
-            mv "$tmp_file" '${cfg.stateDir}/app/config/config.json'
-            chmod 600 '${cfg.stateDir}/app/config/config.json'
+              '${cfg.stateDir}/runtime/config/config.json' > "$tmp_file"
+            mv "$tmp_file" '${cfg.stateDir}/runtime/config/config.json'
+            chmod 600 '${cfg.stateDir}/runtime/config/config.json'
           fi
 
           ${optionalString (cfg.tmdbApiKeyFile != null) ''
@@ -299,23 +299,23 @@ in {
       ];
 
       preStart = ''
-        install -d -m 0750 -o ${globals.anchorr.user} -g ${globals.anchorr.group} '${cfg.stateDir}/app'
-        install -d -m 0750 -o ${globals.anchorr.user} -g ${globals.anchorr.group} '${cfg.stateDir}/app/config'
-        install -d -m 0750 -o ${globals.anchorr.user} -g ${globals.anchorr.group} '${cfg.stateDir}/app/logs'
+        install -d -m 0750 -o ${globals.anchorr.user} -g ${globals.anchorr.group} '${cfg.stateDir}/runtime'
+        install -d -m 0750 -o ${globals.anchorr.user} -g ${globals.anchorr.group} '${cfg.stateDir}/runtime/config'
+        install -d -m 0750 -o ${globals.anchorr.user} -g ${globals.anchorr.group} '${cfg.stateDir}/runtime/logs'
 
         rsync -a \
           --exclude=config \
           --exclude=logs \
           '${cfg.package}/lib/anchorr/' \
-          '${cfg.stateDir}/app/'
+          '${cfg.stateDir}/runtime/'
 
-        chown -R ${globals.anchorr.user}:${globals.anchorr.group} '${cfg.stateDir}/app'
+        chown -R ${globals.anchorr.user}:${globals.anchorr.group} '${cfg.stateDir}/runtime'
       '';
 
       serviceConfig = {
         Type = "exec";
         StateDirectory = "anchorr";
-        WorkingDirectory = "${cfg.stateDir}/app";
+        WorkingDirectory = "${cfg.stateDir}/runtime";
         EnvironmentFile = "${cfg.stateDir}/env";
         DynamicUser = false;
         User = globals.anchorr.user;
