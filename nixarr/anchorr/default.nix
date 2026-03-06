@@ -230,11 +230,11 @@ in {
         Group = globals.anchorr.group;
         ExecStart = pkgs.writeShellScript "anchorr-setup" ''
           set -euo pipefail
-          mkdir -p '${cfg.stateDir}/config'
+          mkdir -p '${cfg.stateDir}/app/config'
           
           # Handle config.json
-          cp '${effectiveConfigFile}' '${cfg.stateDir}/config/config.json'
-          chmod 600 '${cfg.stateDir}/config/config.json'
+          cp '${effectiveConfigFile}' '${cfg.stateDir}/app/config/config.json'
+          chmod 600 '${cfg.stateDir}/app/config/config.json'
 
           # Generate environment file with secrets
           ENV_FILE='${cfg.stateDir}/env'
@@ -256,9 +256,9 @@ in {
               '.discord = ((.discord // {})
                 + (if $bot_id != "" then { bot_id: $bot_id } else {} end)
                 + (if $guild_id != "" then { guild_id: $guild_id } else {} end))' \
-              '${cfg.stateDir}/config/config.json' > "$tmp_file"
-            mv "$tmp_file" '${cfg.stateDir}/config/config.json'
-            chmod 600 '${cfg.stateDir}/config/config.json'
+              '${cfg.stateDir}/app/config/config.json' > "$tmp_file"
+            mv "$tmp_file" '${cfg.stateDir}/app/config/config.json'
+            chmod 600 '${cfg.stateDir}/app/config/config.json'
           fi
 
           ${optionalString (cfg.tmdbApiKeyFile != null) ''
@@ -293,15 +293,34 @@ in {
       requires = ["anchorr-setup.service"];
       wantedBy = ["multi-user.target"];
 
+      path = with pkgs; [
+        coreutils
+        rsync
+      ];
+
+      preStart = ''
+        install -d -m 0750 -o ${globals.anchorr.user} -g ${globals.anchorr.group} '${cfg.stateDir}/app'
+        install -d -m 0750 -o ${globals.anchorr.user} -g ${globals.anchorr.group} '${cfg.stateDir}/app/config'
+        install -d -m 0750 -o ${globals.anchorr.user} -g ${globals.anchorr.group} '${cfg.stateDir}/app/logs'
+
+        rsync -a \
+          --exclude=config \
+          --exclude=logs \
+          '${cfg.package}/lib/anchorr/' \
+          '${cfg.stateDir}/app/'
+
+        chown -R ${globals.anchorr.user}:${globals.anchorr.group} '${cfg.stateDir}/app'
+      '';
+
       serviceConfig = {
         Type = "exec";
         StateDirectory = "anchorr";
-        WorkingDirectory = cfg.stateDir;
+        WorkingDirectory = "${cfg.stateDir}/app";
         EnvironmentFile = "${cfg.stateDir}/env";
         DynamicUser = false;
         User = globals.anchorr.user;
         Group = globals.anchorr.group;
-        ExecStart = "${lib.getExe cfg.package}";
+        ExecStart = "${lib.getExe pkgs.nodejs} app.js";
         Restart = "on-failure";
 
         # Security
