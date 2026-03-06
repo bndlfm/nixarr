@@ -29,5 +29,6 @@ buildNpmPackage rec {
     license = licenses.gpl3Only;
     maintainers = [];
     platforms = platforms.linux;
+    mainProgram = "anchorr";
   };
 }
