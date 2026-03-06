@@ -17,6 +17,8 @@ with lib; let
     if cfg.configFile != null
     then cfg.configFile
     else generatedConfigFile;
+
+  runtimeDir = "${nixarr.stateDir}/anchorr/runtime";
 in {
   options.nixarr.anchorr = {
     enable = mkOption {
@@ -230,11 +232,11 @@ in {
         Group = globals.anchorr.group;
         ExecStart = pkgs.writeShellScript "anchorr-setup" ''
           set -euo pipefail
-          mkdir -p '${cfg.stateDir}/runtime/config'
+          mkdir -p '${runtimeDir}/config'
           
           # Handle config.json
-          cp '${effectiveConfigFile}' '${cfg.stateDir}/runtime/config/config.json'
-          chmod 600 '${cfg.stateDir}/runtime/config/config.json'
+          cp '${effectiveConfigFile}' '${runtimeDir}/config/config.json'
+          chmod 600 '${runtimeDir}/config/config.json'
 
           # Generate environment file with secrets
           ENV_FILE='${cfg.stateDir}/env'
@@ -256,9 +258,9 @@ in {
               '.discord = ((.discord // {})
                 + (if $bot_id != "" then { bot_id: $bot_id } else {} end)
                 + (if $guild_id != "" then { guild_id: $guild_id } else {} end))' \
-              '${cfg.stateDir}/runtime/config/config.json' > "$tmp_file"
-            mv "$tmp_file" '${cfg.stateDir}/runtime/config/config.json'
-            chmod 600 '${cfg.stateDir}/runtime/config/config.json'
+              '${runtimeDir}/config/config.json' > "$tmp_file"
+            mv "$tmp_file" '${runtimeDir}/config/config.json'
+            chmod 600 '${runtimeDir}/config/config.json'
           fi
 
           ${optionalString (cfg.tmdbApiKeyFile != null) ''
@@ -299,23 +301,23 @@ in {
       ];
 
       preStart = ''
-        install -d -m 0750 -o ${globals.anchorr.user} -g ${globals.anchorr.group} '${cfg.stateDir}/runtime'
-        install -d -m 0750 -o ${globals.anchorr.user} -g ${globals.anchorr.group} '${cfg.stateDir}/runtime/config'
-        install -d -m 0750 -o ${globals.anchorr.user} -g ${globals.anchorr.group} '${cfg.stateDir}/runtime/logs'
+        install -d -m 0750 -o ${globals.anchorr.user} -g ${globals.anchorr.group} '${runtimeDir}'
+        install -d -m 0750 -o ${globals.anchorr.user} -g ${globals.anchorr.group} '${runtimeDir}/config'
+        install -d -m 0750 -o ${globals.anchorr.user} -g ${globals.anchorr.group} '${runtimeDir}/logs'
 
         rsync -a \
           --exclude=config \
           --exclude=logs \
           '${cfg.package}/lib/anchorr/' \
-          '${cfg.stateDir}/runtime/'
+          '${runtimeDir}/'
 
-        chown -R ${globals.anchorr.user}:${globals.anchorr.group} '${cfg.stateDir}/runtime'
+        chown -R ${globals.anchorr.user}:${globals.anchorr.group} '${runtimeDir}'
       '';
 
       serviceConfig = {
         Type = "exec";
         StateDirectory = "anchorr";
-        WorkingDirectory = "${cfg.stateDir}/runtime";
+        WorkingDirectory = runtimeDir;
         EnvironmentFile = "${cfg.stateDir}/env";
         DynamicUser = false;
         User = globals.anchorr.user;
