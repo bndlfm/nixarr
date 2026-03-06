@@ -1,7 +1,9 @@
 {
+  bash,
   lib,
   buildNpmPackage,
   fetchFromGitHub,
+  nodejs,
 }:
 buildNpmPackage rec {
   pname = "anchorr";
@@ -16,12 +18,25 @@ buildNpmPackage rec {
 
   npmDepsHash = "sha256-YXPLHloxRci8PIDB5g+myxP36JFhQ2M54hQC86+1mMY=";
 
-  # Anchorr expects to find some files in its working directory
-  # The web interface and other assets need to be available.
-  # Most Node.js apps need some post-install cleanup or adjustment.
-  
-  makeCacheWritable = true;
   dontNpmBuild = true;
+
+  installPhase = ''
+    runHook preInstall
+
+    mkdir -p "$out/lib/anchorr"
+    cp -r . "$out/lib/anchorr/"
+
+    mkdir -p "$out/bin"
+    cat > "$out/bin/anchorr" <<EOF
+    #!${lib.getExe bash}
+    set -euo pipefail
+    cd "${placeholder "out"}/lib/anchorr"
+    exec ${lib.getExe nodejs} app.js
+    EOF
+    chmod +x "$out/bin/anchorr"
+
+    runHook postInstall
+  '';
 
   meta = with lib; {
     description = "Discord bot for media requests via Jellyseerr and notifications for Jellyfin";
