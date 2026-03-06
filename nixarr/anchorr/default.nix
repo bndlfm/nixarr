@@ -228,8 +228,6 @@ in {
         Type = "oneshot";
         RemainAfterExit = true;
         UMask = "0077";
-        User = globals.anchorr.user;
-        Group = globals.anchorr.group;
         ExecStart = pkgs.writeShellScript "anchorr-setup" ''
           set -euo pipefail
           mkdir -p '${runtimeDir}/config'
