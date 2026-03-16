@@ -29,9 +29,7 @@ buildNpmPackage rec {
     mkdir -p "$out/bin"
     cat > "$out/bin/anchorr" <<EOF
     #!${lib.getExe bash}
-    set -euo pipefail
-    cd "${placeholder "out"}/lib/anchorr"
-    exec ${lib.getExe nodejs} app.js
+    exec ${lib.getExe nodejs} "$out/lib/anchorr/app.js" "\$@"
     EOF
     chmod +x "$out/bin/anchorr"
 
