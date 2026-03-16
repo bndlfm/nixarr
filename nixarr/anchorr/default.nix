@@ -297,9 +297,9 @@ in {
         StateDirectory = "anchorr";
         WorkingDirectory = cfg.stateDir;
         EnvironmentFile =
-          ["${cfg.stateDir}/env"]
-          ++ cfg.environmentFiles
-          ++ (optional (cfg.secretsFile != null) cfg.secretsFile);
+          ["-${cfg.stateDir}/env"]
+          ++ (map (f: "-${toString f}") cfg.environmentFiles)
+          ++ (optional (cfg.secretsFile != null) "-${toString cfg.secretsFile}");
         DynamicUser = false;
         User = globals.anchorr.user;
         Group = globals.anchorr.group;
