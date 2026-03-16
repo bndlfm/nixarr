@@ -296,6 +296,12 @@ in {
         Type = "exec";
         StateDirectory = "anchorr";
         WorkingDirectory = cfg.stateDir;
+        ExecStartPre = [
+          (pkgs.writeShellScript "anchorr-pre-start" ''
+            mkdir -p '${cfg.stateDir}'
+            touch '${cfg.stateDir}/env'
+          '')
+        ];
         EnvironmentFile =
           ["-${cfg.stateDir}/env"]
           ++ (map (f: "-${toString f}") cfg.environmentFiles)
