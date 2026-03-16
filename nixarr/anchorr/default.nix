@@ -220,7 +220,9 @@ in {
     ];
 
     systemd.tmpfiles.rules = [
-      "d '${cfg.stateDir}' 0700 ${globals.anchorr.user} root - -"
+      "d '${cfg.stateDir}'        0750 ${globals.anchorr.user} ${globals.anchorr.group} - -"
+      "d '${cfg.stateDir}/logs'   0750 ${globals.anchorr.user} ${globals.anchorr.group} - -"
+      "d '${cfg.stateDir}/config' 0750 ${globals.anchorr.user} ${globals.anchorr.group} - -"
     ];
 
     systemd.services.anchorr-setup = {
@@ -240,7 +242,6 @@ in {
         Group = globals.anchorr.group;
         ExecStart = pkgs.writeShellScript "anchorr-setup" ''
           set -euo pipefail
-          mkdir -p '${cfg.stateDir}/config'
 
           # Handle config.json
           cp '${effectiveConfigFile}' '${cfg.stateDir}/config/config.json'
@@ -276,8 +277,6 @@ in {
           ''}
 
           chmod 600 "$ENV_FILE"
-          chmod 700 '${cfg.stateDir}/config'
-          chmod 600 '${cfg.stateDir}/config/config.json'
         '';
       };
     };
