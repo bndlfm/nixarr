@@ -236,12 +236,12 @@ in {
         Type = "oneshot";
         RemainAfterExit = true;
         UMask = "0077";
-        # Setup runs as anchorr user to have access to its own secrets
-        # (e.g. from sops-nix) which might be restricted to that user.
-        User = globals.anchorr.user;
-        Group = globals.anchorr.group;
+        # Run as root to ensure we can read secrets and write to stateDir
         ExecStart = pkgs.writeShellScript "anchorr-setup" ''
           set -euo pipefail
+
+          # Ensure directories exist (redundant with tmpfiles but safe)
+          mkdir -p '${cfg.stateDir}/config'
 
           # Handle config.json
           cp '${effectiveConfigFile}' '${cfg.stateDir}/config/config.json'
@@ -276,6 +276,8 @@ in {
             fi
           ''}
 
+          # Ensure the service can read it
+          chown -R ${globals.anchorr.user}:${globals.anchorr.group} '${cfg.stateDir}'
           chmod 600 "$ENV_FILE"
         '';
       };
@@ -296,12 +298,6 @@ in {
         Type = "exec";
         StateDirectory = "anchorr";
         WorkingDirectory = cfg.stateDir;
-        ExecStartPre = [
-          (pkgs.writeShellScript "anchorr-pre-start" ''
-            mkdir -p '${cfg.stateDir}'
-            touch '${cfg.stateDir}/env'
-          '')
-        ];
         EnvironmentFile =
           ["-${cfg.stateDir}/env"]
           ++ (map (f: "-${toString f}") cfg.environmentFiles)
