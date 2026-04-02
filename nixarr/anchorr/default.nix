@@ -243,9 +243,12 @@ in {
           # Ensure directories exist (redundant with tmpfiles but safe)
           mkdir -p '${cfg.stateDir}/config'
 
-          # Handle config.json
-          cp '${effectiveConfigFile}' '${cfg.stateDir}/config/config.json'
-          chmod 600 '${cfg.stateDir}/config/config.json'
+          # Only copy config.json if it's explicitly provided or not empty.
+          # This allows environment variables to work without being overridden by an empty config.
+          ${optionalString (cfg.configFile != null || cfg.configuration != {}) ''
+            cp '${effectiveConfigFile}' '${cfg.stateDir}/config/config.json'
+            chmod 600 '${cfg.stateDir}/config/config.json'
+          ''}
 
           # Generate environment file with secrets from single files
           ENV_FILE='${cfg.stateDir}/env'
