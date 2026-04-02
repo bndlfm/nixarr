@@ -245,6 +245,7 @@ in {
 
           # Handle config.json
           cp '${effectiveConfigFile}' '${cfg.stateDir}/config/config.json'
+          chmod 600 '${cfg.stateDir}/config/config.json'
 
           # Generate environment file with secrets from single files
           ENV_FILE='${cfg.stateDir}/env'
