@@ -223,6 +223,7 @@ in {
       "d '${cfg.stateDir}'        0750 ${globals.anchorr.user} ${globals.anchorr.group} - -"
       "d '${cfg.stateDir}/logs'   0750 ${globals.anchorr.user} ${globals.anchorr.group} - -"
       "d '${cfg.stateDir}/config' 0750 ${globals.anchorr.user} ${globals.anchorr.group} - -"
+      "L+ '${cfg.stateDir}/locales' - - - - ${cfg.package}/lib/anchorr/locales"
     ];
 
     systemd.services.anchorr-setup = {
@@ -242,6 +243,10 @@ in {
 
           # Ensure directories exist (redundant with tmpfiles but safe)
           mkdir -p '${cfg.stateDir}/config'
+
+          # Fix: The app expects locales in its working directory. 
+          # We use a symlink managed by tmpfiles, but ensure it's here for the setup's own visibility if needed.
+          ln -sfn '${cfg.package}/lib/anchorr/locales' '${cfg.stateDir}/locales'
 
           # Only copy config.json if it's explicitly provided or not empty.
           # This allows environment variables to work without being overridden by an empty config.
