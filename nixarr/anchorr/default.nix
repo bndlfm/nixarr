@@ -11,7 +11,18 @@ with lib; let
   port = 8282;
 
   settingsFormat = pkgs.formats.json {};
-  generatedConfigFile = settingsFormat.generate "anchorr-config.json" cfg.configuration;
+  
+  # Merge declarative options into the configuration attrset
+  finalConfiguration = recursiveUpdate cfg.configuration (filterAttrs (n: v: v != null) {
+    USER_MAPPINGS = map (m: {
+      inherit (m) discordUserId jellyseerrUserId;
+      jellyseerrDisplayName = if m.jellyseerrDisplayName != null then m.jellyseerrDisplayName else "";
+    }) cfg.userMappings;
+    JELLYSEERR_AUTO_APPROVE = cfg.settings.autoApprove;
+    NOTIFY_ON_AVAILABLE = cfg.settings.notifyOnAvailable;
+  });
+
+  generatedConfigFile = settingsFormat.generate "anchorr-config.json" finalConfiguration;
 
   effectiveConfigFile =
     if cfg.configFile != null
@@ -88,6 +99,50 @@ in {
         example = "/data/.secret/anchorr/jellyseerr-api-key";
         description = "Path to a file containing the Jellyseerr API key.";
       };
+    };
+
+    userMappings = mkOption {
+      type = types.listOf (types.submodule {
+        options = {
+          discordUserId = mkOption {
+            type = types.str;
+            description = "The Snowflake ID of the Discord user.";
+          };
+          jellyseerrUserId = mkOption {
+            type = types.str;
+            description = "The numerical ID of the Jellyseerr user.";
+          };
+          jellyseerrDisplayName = mkOption {
+            type = types.nullOr types.str;
+            default = null;
+            description = "Optional display name for the mapping.";
+          };
+        };
+      });
+      default = [];
+      description = "Declarative mappings between Discord users and Jellyseerr users.";
+    };
+
+    settings = mkOption {
+      type = types.submodule {
+        options = {
+          autoApprove = mkOption {
+            type = types.bool;
+            default = false;
+            description = "Auto-approve requests for users NOT in the mapping (uses admin API key).";
+          };
+          notifyOnAvailable = mkOption {
+            type = types.bool;
+            default = true;
+            description = "Notify users when their requested media becomes available.";
+          };
+        };
+      };
+      default = {
+        autoApprove = false;
+        notifyOnAvailable = true;
+      };
+      description = "General Anchorr configuration flags.";
     };
 
     environmentFiles = mkOption {
@@ -248,10 +303,16 @@ in {
           # We use a symlink managed by tmpfiles, but ensure it's here for the setup's own visibility if needed.
           ln -sfn '${cfg.package}/lib/anchorr/locales' '${cfg.stateDir}/locales'
 
-          # Only copy config.json if it's explicitly provided or not empty.
-          # This allows environment variables to work without being overridden by an empty config.
-          ${optionalString (cfg.configFile != null || cfg.configuration != {}) ''
-            cp '${effectiveConfigFile}' '${cfg.stateDir}/config/config.json'
+          # Handle config.json with smart merge to preserve JWT_SECRET and web USERS
+          # only if configuration is explicitly provided or userMappings/settings are used.
+          ${optionalString (cfg.configFile != null || cfg.configuration != {} || cfg.userMappings != [] || cfg.settings != {}) ''
+            if [[ -f '${cfg.stateDir}/config/config.json' ]]; then
+              # Merge existing config with Nix config, Nix config wins for provided keys
+              ${pkgs.jq}/bin/jq -s '.[0] * .[1]' '${cfg.stateDir}/config/config.json' '${effectiveConfigFile}' > '${cfg.stateDir}/config/config.json.tmp'
+              mv '${cfg.stateDir}/config/config.json.tmp' '${cfg.stateDir}/config/config.json'
+            else
+              cp '${effectiveConfigFile}' '${cfg.stateDir}/config/config.json'
+            fi
             chmod 600 '${cfg.stateDir}/config/config.json'
           ''}
 
